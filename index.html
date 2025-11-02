@@ -52,11 +52,10 @@
 </div>
 
 <script>
-const scriptURL = "https://script.google.com/macros/s/AKfycbxfyTEC6okkdFHbbzqtMo4bci1d5zDPvRkOhBp1X3g_kO1oLafUFB7hdr-42Bu6jTm6QA/exec";
-
+const scriptURL = "PON_AQUI_TU_URL_EXEC"; // 👈 reemplaza con tu enlace de Apps Script
 let esDocente = false;
 
-// === MODO DOCENTE ===
+// === Entrar como docente ===
 function modoDocente() {
   const clave = prompt("Ingresa la contraseña:");
   if (clave === "1234") {
@@ -68,7 +67,7 @@ function modoDocente() {
   }
 }
 
-// === SALIR ===
+// === Salir ===
 function salir() {
   esDocente = false;
   document.getElementById("modoDocente").style.display = "none";
@@ -76,83 +75,62 @@ function salir() {
   cargarPublicaciones();
 }
 
-// === PUBLICAR ===
+// === Publicar ===
 async function publicar() {
   const texto = document.getElementById("textoPublicar").value.trim();
   if (!texto) return alert("Escribe algo antes de publicar.");
 
-  try {
-    const res = await fetch(scriptURL, {
-      method: "POST",
-      body: JSON.stringify({ texto }),
-    });
-    const data = await res.json();
-    if (data.status !== "ok") throw new Error("Error al guardar en el servidor.");
-    document.getElementById("textoPublicar").value = "";
-    cargarPublicaciones();
-  } catch (err) {
-    alert("❌ No se pudo publicar: " + err.message);
-  }
+  const res = await fetch(scriptURL, {
+    method: "POST",
+    body: JSON.stringify({ texto })
+  });
+  document.getElementById("textoPublicar").value = "";
+  cargarPublicaciones();
 }
 
-// === CARGAR PUBLICACIONES ===
+// === Cargar publicaciones ===
 async function cargarPublicaciones() {
-  try {
-    const res = await fetch(scriptURL);
-    const publicaciones = await res.json();
+  const res = await fetch(scriptURL);
+  const publicaciones = await res.json();
 
-    const contenedor = document.getElementById("publicaciones");
-    contenedor.innerHTML = "";
+  const contenedor = document.getElementById("publicaciones");
+  contenedor.innerHTML = "";
 
-    if (!Array.isArray(publicaciones) || publicaciones.length === 0) {
-      contenedor.innerHTML = "<p>No hay publicaciones aún.</p>";
-      return;
-    }
-
-    // Mostrar en orden (última arriba)
-    publicaciones.reverse().forEach((p, i) => {
-      const texto = p.texto || "(sin texto)";
-      const fecha = p.fecha ? new Date(p.fecha).toLocaleString() : "Fecha desconocida";
-
-      const div = document.createElement("div");
-      div.className = "post";
-      div.innerHTML = `
-        <p>${texto}</p>
-        <div class="fecha">${fecha}</div>
-        ${esDocente ? `<div class='acciones'><button onclick='eliminar(${i})'>Eliminar</button></div>` : ""}
-      `;
-      contenedor.appendChild(div);
-    });
-  } catch (err) {
-    console.error(err);
-    document.getElementById("publicaciones").innerHTML =
-      "<p style='color:red;'>❌ Error al cargar publicaciones.</p>";
+  if (publicaciones.length === 0) {
+    contenedor.innerHTML = "<p>No hay publicaciones aún.</p>";
+    return;
   }
+
+  publicaciones.reverse().forEach((p, i) => {
+    const fecha = p.fecha ? new Date(p.fecha).toLocaleString() : "";
+    const div = document.createElement("div");
+    div.className = "post";
+    div.innerHTML = `
+      <p>${p.texto}</p>
+      <div class="fecha">${fecha}</div>
+      ${esDocente ? `<div class='acciones'><button onclick='eliminar(${i})'>Eliminar</button></div>` : ""}
+    `;
+    contenedor.appendChild(div);
+  });
 }
 
-// === ELIMINAR PUBLICACIÓN ===
+// === Eliminar publicación ===
 async function eliminar(indice) {
   if (!confirm("¿Eliminar esta publicación?")) return;
-  try {
-    const res = await fetch(scriptURL);
-    const publicaciones = await res.json();
+  const res = await fetch(scriptURL);
+  const publicaciones = await res.json();
 
-    // Corregir índice invertido
-    publicaciones.splice(publicaciones.length - 1 - indice, 1);
+  publicaciones.splice(publicaciones.length - 1 - indice, 1);
 
-    await fetch(scriptURL, {
-      method: "POST",
-      body: JSON.stringify({ reset: publicaciones }),
-    });
+  await fetch(scriptURL, {
+    method: "POST",
+    body: JSON.stringify({ reset: publicaciones })
+  });
 
-    cargarPublicaciones();
-  } catch (err) {
-    alert("❌ Error al eliminar: " + err.message);
-  }
+  cargarPublicaciones();
 }
 
 cargarPublicaciones();
 </script>
-
 </body>
 </html>
