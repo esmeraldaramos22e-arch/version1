@@ -38,24 +38,28 @@
 <body>
 <div class="container">
   <h2>📚 Muro de Publicaciones</h2>
+
+  <!-- Modo visitante -->
   <div id="modoInicial">
     <button onclick="modoDocente()">👩‍🏫 Entrar como docente</button>
   </div>
 
+  <!-- Modo docente -->
   <div id="modoDocente" style="display:none;">
     <textarea id="textoPublicar" placeholder="Escribe una publicación..."></textarea>
     <button onclick="publicar()">Publicar</button>
     <button onclick="salir()">Cerrar sesión</button>
   </div>
 
+  <!-- Publicaciones -->
   <div id="publicaciones"></div>
 </div>
 
 <script>
-const scriptURL = "PON_AQUI_TU_URL_EXEC"; // 👈 reemplaza con tu enlace de Apps Script
+const scriptURL = "https://script.google.com/macros/s/AKfycbw3az53EcZ_NBUwjvaFZAucPt7iEQelL7d5XssatsrkoJlvxGxBR8-wkCjbE6guiMu6/exec";
 let esDocente = false;
 
-// === Entrar como docente ===
+// --- Cambiar a modo docente ---
 function modoDocente() {
   const clave = prompt("Ingresa la contraseña:");
   if (clave === "1234") {
@@ -67,7 +71,7 @@ function modoDocente() {
   }
 }
 
-// === Salir ===
+// --- Cerrar sesión ---
 function salir() {
   esDocente = false;
   document.getElementById("modoDocente").style.display = "none";
@@ -75,61 +79,73 @@ function salir() {
   cargarPublicaciones();
 }
 
-// === Publicar ===
+// --- Publicar texto ---
 async function publicar() {
   const texto = document.getElementById("textoPublicar").value.trim();
   if (!texto) return alert("Escribe algo antes de publicar.");
 
-  const res = await fetch(scriptURL, {
-    method: "POST",
-    body: JSON.stringify({ texto })
-  });
-  document.getElementById("textoPublicar").value = "";
-  cargarPublicaciones();
-}
-
-// === Cargar publicaciones ===
-async function cargarPublicaciones() {
-  const res = await fetch(scriptURL);
-  const publicaciones = await res.json();
-
-  const contenedor = document.getElementById("publicaciones");
-  contenedor.innerHTML = "";
-
-  if (publicaciones.length === 0) {
-    contenedor.innerHTML = "<p>No hay publicaciones aún.</p>";
-    return;
+  try {
+    await fetch(scriptURL, {
+      method: "POST",
+      body: JSON.stringify({ texto }),
+      headers: { "Content-Type": "application/json" }
+    });
+    document.getElementById("textoPublicar").value = "";
+    cargarPublicaciones();
+  } catch (err) {
+    alert("Error al publicar.");
+    console.error(err);
   }
-
-  publicaciones.reverse().forEach((p, i) => {
-    const fecha = p.fecha ? new Date(p.fecha).toLocaleString() : "";
-    const div = document.createElement("div");
-    div.className = "post";
-    div.innerHTML = `
-      <p>${p.texto}</p>
-      <div class="fecha">${fecha}</div>
-      ${esDocente ? `<div class='acciones'><button onclick='eliminar(${i})'>Eliminar</button></div>` : ""}
-    `;
-    contenedor.appendChild(div);
-  });
 }
 
-// === Eliminar publicación ===
+// --- Cargar publicaciones ---
+async function cargarPublicaciones() {
+  try {
+    const res = await fetch(scriptURL);
+    if (!res.ok) throw new Error("Error de conexión");
+    const publicaciones = await res.json();
+
+    const contenedor = document.getElementById("publicaciones");
+    contenedor.innerHTML = "";
+
+    if (publicaciones.length === 0) {
+      contenedor.innerHTML = "<p>No hay publicaciones aún.</p>";
+      return;
+    }
+
+    publicaciones.reverse().forEach((p, i) => {
+      const div = document.createElement("div");
+      div.className = "post";
+      div.innerHTML = `
+        <p>${p.texto}</p>
+        <div class="fecha">${new Date(p.fecha).toLocaleString()}</div>
+        ${esDocente ? `<div class='acciones'><button onclick='eliminar(${i})'>Eliminar</button></div>` : ""}
+      `;
+      contenedor.appendChild(div);
+    });
+  } catch (err) {
+    console.error(err);
+    alert("Error al cargar publicaciones");
+  }
+}
+
+// --- Eliminar publicación ---
 async function eliminar(indice) {
   if (!confirm("¿Eliminar esta publicación?")) return;
+
   const res = await fetch(scriptURL);
   const publicaciones = await res.json();
-
-  publicaciones.splice(publicaciones.length - 1 - indice, 1);
+  publicaciones.reverse().splice(indice, 1);
 
   await fetch(scriptURL, {
     method: "POST",
-    body: JSON.stringify({ reset: publicaciones })
+    body: JSON.stringify({ reset: publicaciones }),
+    headers: { "Content-Type": "application/json" }
   });
-
   cargarPublicaciones();
 }
 
+// --- Inicializar ---
 cargarPublicaciones();
 </script>
 </body>
